@@ -31,6 +31,11 @@ Installation
   * ``transurlvania.middleware.URLCacheResetMiddleware`` (must be before the
     ``SessionMiddleware``)
 
+    This middleware is responsible for clearing the URLconf cache that Django
+    populates. If this cache is not cleared, URL reversing will return all URLs
+    for the language that was active when the cache was populated independent of
+    the language that is currently active.
+
   * ``transurlvania.middleware.URLTransMiddleware`` (must be before the
 	``CommonMiddleware`` in order for APPEND_SLASH to work)
 
@@ -51,6 +56,11 @@ with::
 
     from transurlvania.defaults import *
 
+``transurlvania.defaults`` provides a custom ``url`` function that works with both
+translated and regular URLs. Also, a ``lang_prefixed_patterns`` function is
+provided. The rest of the functions imported from `transurlvania.defaults` are
+identical to their counterparts in ``django.conf.urls.defaults``.
+
 You will need the ugettext_noop function if you want to mark any URL patterns
 for localization::
 
@@ -65,6 +75,14 @@ call::
 Now, when you next run the ``makemessages`` management command, these URL
 patterns will be collected in the .po file along with all the other
 localizable strings.
+
+transurlvania will deal with the actual translating of these strings for URL
+resolving and reversing.
+
+transurlvania will attempt to translate the entire
+pattern so the following will not work::
+
+    url(r'^' + _('articles') + '/' + _('archive') + '/$', ...)
 
 Notes:
 
@@ -89,6 +107,14 @@ name of the view or URL and the ``view_args`` parameter::
     def get_absolute_url(self):
         ('name_of_view_or_url', self.language, (), {})
 
+Alternatively, ``reverse_for_language`` from ``transurlvania.urlresolvers`` can
+be used as a replacement for ``django.core.urlresolvers.reverse``.
+
+If the model is not tied to any specific language and has a URL for any
+installed language, Django's built-in ``permalink`` decorator or the ``reverse``
+function will return the correct, translated URL for the currently active
+language. A call such as ``reverse(url_name, ...)`` will have the same effect
+as ``reverse_for_language(url_name, translation.get_language(), ...)``.
 
 Making URLs Language-Specific
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -148,10 +174,9 @@ Language in Path
           url(_(r'^about-us/$'), 'about_us', name='about_us'),
       )
 
-
       urlpatterns += patterns('example.views',
           url(r'^$', 'language_selection_splash'),
-          )
+      )
 
 Language in Domain
 ``````````````````
