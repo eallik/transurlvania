@@ -233,6 +233,53 @@ In those cases, you can use the decorators provided by the ``translators``
 module to decorate the view and change which URL look-up scheme is used. You
 can also define your own look-up schemes.
 
+Multilingual models
+```````````````````
+
+If your model is able to display itself in multiple languages as opposed to
+retrieving and delegating to other, translated DB instances, the
+``get_translation`` method should return a language specific wrapper object
+whose ``get_absolute_url`` method returns the URL of your model object in that
+language::
+
+    class LangWrapper(object):
+
+        def __init__(self, obj, lang):
+            self.obj, self.lang = obj, lang
+
+        def get_absolute_url(self):
+            return self.obj.get_absolute_url(lang=self.lang)
+
+    class MultiLangBlogPost(models.Model):
+        slug_en = models.SlugField()
+        slug_fr = models.SlugField()
+
+        def get_translation(self, lang):
+            return LangWrapper(self, lang)
+
+        def get_absolute_url(self, lang=None):
+            slug = self.get_translated('slug', lang)
+            return reverse_for_language('blogpost_detail', lang,
+                                        args=(slug, ))
+
+transurlvania provides a mixin to do this for you, so only the extended
+``get_absolute_url`` method needs to be implemented for language switching to
+work and the rest will be automatic::
+
+    from transurlvania.utils import MultiLangModel
+
+
+    class MultiLangBlogPost(MultiLangModel):
+        slug_en = models.SlugField()
+        slug_fr = models.SlugField()
+
+        def get_absolute_url(self, lang=None):
+            slug = self.get_translated('slug', lang)
+            return reverse_for_language('blogpost_detail', lang,
+                                        args=(slug, ))
+
+
+
 Language Based Blocking
 ~~~~~~~~~~~~~~~~~~~~~~~
 
